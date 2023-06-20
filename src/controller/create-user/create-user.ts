@@ -6,6 +6,8 @@ import {
   ICreateUserRepository,
 } from "./protocols";
 
+import validator from "validator";
+
 export class CreateUserController implements ICreateUserController {
   constructor(private readonly createUserRepository: ICreateUserRepository) {}
 
@@ -13,14 +15,28 @@ export class CreateUserController implements ICreateUserController {
     httpRequest: HttpRequest<CreateUserParams>
   ): Promise<HttpResponse<User>> {
     try {
-      if (!httpRequest.body) {
+      const camposObrigatorios = ["nome", "sobrenome", "email", "password"];
+
+      for (const campos of camposObrigatorios) {
+        if (!httpRequest?.body?.[campos as keyof CreateUserParams]?.length) {
+          return {
+            statusCode: 400,
+            body: `Campo(s) ${campos} é obrigatório(s).`,
+          };
+        }
+      }
+      const emailValido = validator.isEmail(httpRequest.body!.email);
+
+      if (!emailValido) {
         return {
           statusCode: 400,
-          body: "Favor especifique o Body.",
+          body: "E-mail é inválido",
         };
       }
 
-      const user = await this.createUserRepository.createUser(httpRequest.body);
+      const user = await this.createUserRepository.createUser(
+        httpRequest.body!
+      );
 
       return {
         statusCode: 201,
